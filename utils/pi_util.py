@@ -23,11 +23,13 @@ class PersonalityInsightUtil(object):
         
         self._api_key_ = api_key
         self._url_ = url
+        self.mode = mode
+        self.translate = translate
         
         self.pi_service = PersonalityInsightsV3(url=self._url_, 
                                                 iam_apikey=self._api_key_, 
                                                 version="2017-10-13")
-        if mode == "twitter":
+        if self.mode == "twitter":
             self.consumer_key = kwargs['consumer_key']
             self.consumer_secret = kwargs['consumer_secret']
             self.access_token = kwargs['access_token']
@@ -38,7 +40,7 @@ class PersonalityInsightUtil(object):
                                  self.consumer_secret, 
                                  self.access_token, 
                                  self.access_token_secret)
-        elif mode == "youtube":
+        elif self.mode == "youtube":
             if kwargs:
                 raise ValueError("Youtube mode does not need Twitter API Keys. For safety, please remove.")
         else:
@@ -116,11 +118,17 @@ class PersonalityInsightUtil(object):
         }
         return content
 
-    def _get_personality(self, statuses):
+    def get_personality(self, username_or_urls):
         
-        content = {'contentItems': statuses}
+        if self.mode == "twitter":
+            contents = self.twitter_scrape(username_or_urls)
+        
+        if self.mode == "youtube":
+            contents = self.youtube_scraper(username_or_urls)
+        
+        contents = {'contentItems': contents}
 
-        result = pi_service.profile(json.dumps(content), 
+        result = self.pi_service.profile(json.dumps(contents), 
                                  content_type="application/json", 
                                  accept="application/json").get_result()
         return result
@@ -228,7 +236,7 @@ class PersonalityInsightUtil(object):
         
         contents = list(map(self._convert_status, statuses))
         
-        return contens
+        return contents
     
     def youtube_scraper(self, url):
         contents = list(map(self._youtube_captions, url))
