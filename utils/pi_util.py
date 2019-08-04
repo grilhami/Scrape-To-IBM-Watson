@@ -1,6 +1,7 @@
 import functools
 import json
 import matplotlib.pyplot as plt
+import numpy as np
 import operator
 import pandas as pd
 import re
@@ -11,6 +12,21 @@ from datetime import datetime
 from ibm_watson import PersonalityInsightsV3
 from pytube import YouTube
 
+
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import tweepy
+import re
+import functools
+import operator
+import warnings
+
+from ibm_watson import PersonalityInsightsV3
+from pytube import YouTube
+from datetime import datetime
 
 class PersonalityInsightUtil(object):
     
@@ -42,7 +58,7 @@ class PersonalityInsightUtil(object):
                                  self.access_token_secret)
         elif self.mode == "youtube":
             if kwargs:
-                raise ValueError("Youtube mode does not need Twitter API Keys. For safety, please remove.")
+                warnings.warn("Youtube mode does not need Twitter API Keys. For safety, please remove.")
         else:
             raise ValueError("Does not support platform.")
             
@@ -118,7 +134,7 @@ class PersonalityInsightUtil(object):
         }
         return content
 
-    def get_personality(self, username_or_urls):
+    def get_personality(self, username_or_urls, pandas_df=False):
         
         if self.mode == "twitter":
             contents = self.twitter_scrape(username_or_urls)
@@ -131,7 +147,11 @@ class PersonalityInsightUtil(object):
         result = self.pi_service.profile(json.dumps(contents), 
                                  content_type="application/json", 
                                  accept="application/json").get_result()
-        return result
+        if pandas_df is True:
+            result_df = self._generate_df(result, username_or_urls)
+            return result_df
+        else:
+            return result
 
     def _show_plot(self, result):
 
@@ -229,6 +249,47 @@ class PersonalityInsightUtil(object):
             list_of_percentiles = functools.reduce(operator.iconcat, list_of_percentiles, [])
 
         return list_of_names, list_of_percentiles
+    
+    def _generate_df(self, result, username_or_url):
+        
+        # Get personality names and percentiles
+        personality_names, personality_percentiles = self._get_results(result, mode='personality')
+        values_names, values_percentiles = self._get_results(result, mode='values')
+        needs_names, needs_percentiles = self._get_results(result, mode='needs')
+        children_names, children_percentiles = self._big_five_children_results(result, flattened=True)
+
+
+        # INITIATE DATAFRAM
+        # If index == 0
+        personality_df = pd.DataFrame(columns=["Source"] + personality_names)
+        values_df = pd.DataFrame(columns=["Source"] + values_names)
+        needs_df = pd.DataFrame(columns=["Source"] + needs_names)
+        children_df = pd.DataFrame(columns=["Source"] + children_names)
+            
+        if "http" in username_or_url:
+            source = username_or_url
+        else:
+            source = "https://twitter.com/"+username_or_url
+
+        # Append data to dataframe
+        personality_idx = values_df.index.max() + 1 if values_df.index.max() is not np.nan else 0
+        personality_df.loc[personality_idx] = [source] + personality_percentiles
+
+        values_idx = values_df.index.max() + 1 if values_df.index.max() is not np.nan else 0
+        values_df.loc[values_idx] = [source] + values_percentiles
+
+        needs_idx = needs_df.index.max() + 1 if needs_df.index.max() is not np.nan else 0
+        needs_df.loc[needs_idx] = [source] + needs_percentiles
+
+        children_idx = children_df.index.max() + 1 if children_df.index.max() is not np.nan else 0
+        children_df.loc[children_idx] = [source] + children_percentiles
+        
+        result_df = pd.concat([personality_df, 
+                               values_df.drop("Source", axis=1), 
+                               needs_df.drop("Source", axis=1), 
+                               children_df.drop("Source", axis=1)], axis=1, sort=False)
+        return result_df
+        
     
     def twitter_scrape(self,username):
         
