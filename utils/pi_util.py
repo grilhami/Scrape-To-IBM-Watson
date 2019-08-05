@@ -154,7 +154,7 @@ class PersonalityInsightUtil(object):
             return result
 
     def _show_plot(self, result):
-
+        # TODO: Plot for children personalitites of the big 5    
         result_dict = {need['name']: need['percentile'] for need in result['personality']}
         
         df = pd.DataFrame.from_dict(result_dict, orient="index")
@@ -251,7 +251,8 @@ class PersonalityInsightUtil(object):
         return list_of_names, list_of_percentiles
     
     def _generate_df(self, result, username_or_url):
-        
+        #TODO: Need to make support for multiple urls
+
         # Get personality names and percentiles
         personality_names, personality_percentiles = self._get_results(result, mode='personality')
         values_names, values_percentiles = self._get_results(result, mode='values')
@@ -293,6 +294,8 @@ class PersonalityInsightUtil(object):
     
     def twitter_scrape(self,username):
         
+        # TODO: Need to make support for mutiple accounts
+        # or urls
         statuses = self._retrieve_tweets(username, self.api)
         
         contents = list(map(self._convert_status, statuses))
@@ -300,6 +303,8 @@ class PersonalityInsightUtil(object):
         return contents
     
     def youtube_scraper(self, url):
+        
+        # TODO: Decide if need support for a single string
         contents = list(map(self._youtube_captions, url))
         ready = [
             {"content": content, "contenttype": "text/plain"} for content in contents

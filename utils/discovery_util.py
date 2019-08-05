@@ -16,8 +16,9 @@ from urllib.request import urlopen, Request
 from urllib.parse import urlparse
 
 class DiscoveryUtil(object):
-    def __init__(self, api_key, url, collection_name, reset_collection=True):
-        
+    def __init__(self, api_key, url, collection_name, reset_collection=True): 
+
+        # TODO: Includese scraper capability
         self.api_key = api_key
         self.url = url
         self.collection_name = collection_name
@@ -122,6 +123,7 @@ class DiscoveryUtil(object):
 
         soup = BeautifulSoup(r.content)
 
+        # TODO: Add support for text in <span>
         all_p_data = [p.text for p in soup.find_all("p")]
 
         try:
@@ -134,8 +136,10 @@ class DiscoveryUtil(object):
         except:
             final_text = " ".join(all_p_data)
         return final_text
-        
+
     def send_news_discovery(self, url_list):
+
+        # TODO: Add support for using a file path
 
         print("Generating web data...")
         all_content_list = list(map(self._get_webpage_data, tqdm(url_list)))
@@ -177,6 +181,8 @@ class DiscoveryUtil(object):
         return content_names, url_list
     
     def get_result(self, urls, query):
+
+        # TODO: Get url and file name based on result.
         content_names, url_list = self.send_news_discovery(urls)
         
         query_collections = self.discovery.query(self.environment_id, 
