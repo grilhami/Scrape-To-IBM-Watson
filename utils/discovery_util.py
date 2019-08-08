@@ -33,8 +33,7 @@ class DiscoveryUtil(object):
         
         if reset_collection is True:
             self.collection_id = self._reset_collection()
-        
-        
+            
     def _reset_collection(self):
         # Delete collection
         delete_collection = self.discovery.delete_collection(self.environment_id, 
@@ -136,6 +135,15 @@ class DiscoveryUtil(object):
         except:
             final_text = " ".join(all_p_data)
         return final_text
+    def send_to_discovery(discovery, filename, environment_id, collection_id):
+    
+        # Get file
+        fileinfo = self._open_file(filename)
+
+        # Send the data to the service
+        add_doc = self.discovery.add_document(environment_id, collection_id, file=fileinfo).get_result()
+
+        return add_doc
 
     def send_news_discovery(self, url_list):
 
@@ -180,13 +188,19 @@ class DiscoveryUtil(object):
                 continue
         return content_names, url_list
     
+    def query(self, query):
+        query_result = self.discovery.query(self.environment_id, 
+                                        self.collection_id, 
+                                        query=query).get_result()
+        return query_result
+        
+    
     def get_result(self, urls, query):
 
         # TODO: Get url and file name based on result.
         content_names, url_list = self.send_news_discovery(urls)
         
-        query_collections = self.discovery.query(self.environment_id, 
-                                        self.collection_id, 
-                                        query=query).get_result()
-        return query_collections
         
+        query_collections = self.query(query)
+        return query_collections
+   
