@@ -1,18 +1,3 @@
-import functools
-import json
-import matplotlib.pyplot as plt
-import numpy as np
-import operator
-import pandas as pd
-import re
-import tweepy
-import seaborn as sns
-
-from datetime import datetime
-from ibm_watson import PersonalityInsightsV3
-from pytube import YouTube
-
-
 import json
 import matplotlib.pyplot as plt
 import numpy as np
