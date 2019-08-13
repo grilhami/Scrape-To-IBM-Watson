@@ -7,11 +7,11 @@ import tweepy
 import re
 import functools
 import operator
-import warnings
 
 from ibm_watson import PersonalityInsightsV3
 from pytube import YouTube
 from datetime import datetime
+from googletrans import Translator; translator = Translator()
 
 class PersonalityInsightUtil(object):
     
@@ -105,14 +105,15 @@ class PersonalityInsightUtil(object):
             Function to help prepare tweet to be sent to watson api.
         """
         current_time = datetime.now()
+        text = translator.translate(status.text, src="id", dest="en").text
         
         content = {
             'userid': str(status.user.id),
             'id': str(status.id),
             'sourceid': 'python-twitter',
             'contenttype': 'text/plain',
-            'language': status.lang,
-            'content': status.text,
+            'language': "en",
+            'content': text,
             'created': round((status.created_at - current_time).total_seconds()),
             'reply': (status.in_reply_to_status_id is None),
             'forward': False
@@ -283,7 +284,14 @@ class PersonalityInsightUtil(object):
         # or urls
         statuses = self._retrieve_tweets(username, self.api)
         
-        contents = list(map(self._convert_status, statuses))
+        contents = []
+        for status in statuses:
+            try:
+                content = self._convert_status(status)
+                contents.append(content)
+            except Exception as e:
+                print(e)
+                pass
         
         return contents
     
@@ -296,4 +304,3 @@ class PersonalityInsightUtil(object):
         ]
                 
         return ready
-    
