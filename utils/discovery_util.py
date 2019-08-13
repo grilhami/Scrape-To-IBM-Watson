@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import re
 import requests
 
 from bs4 import BeautifulSoup
@@ -27,13 +28,18 @@ class DiscoveryUtil(object):
                                      iam_apikey=self.api_key,
                                      url=self.url
                                     )
+
+        # TODO: Need to add function to handle
+        # modifying configuration to include
+        # keyword extraction
         self.translator = Translator()
     
         self.environment_id, self.config_id, self.collection_id = self._get_ids()
         
         if reset_collection is True:
             self.collection_id = self._reset_collection()
-            
+        
+        
     def _reset_collection(self):
         # Delete collection
         delete_collection = self.discovery.delete_collection(self.environment_id, 
@@ -105,7 +111,7 @@ class DiscoveryUtil(object):
                 f.write(content)
         return filename
         
-    def _get_webpage_data(self, url):
+    def _get_webpage_data(self, url, no_p=False, main_tag=None, attribute_dict={}):
         """
         Function to clean web content.
         """
@@ -122,8 +128,21 @@ class DiscoveryUtil(object):
 
         soup = BeautifulSoup(r.content)
 
-        # TODO: Add support for text in <span>
         all_p_data = [p.text for p in soup.find_all("p")]
+        
+        # Handle text that is not contain within a
+        # an html tag <p>
+        if no_p is True:
+            if main_tag is None and bool(attribute_dict) is False:
+                raise ValueError("when no_p is true, then main tag and attribute dict must not be empty")
+            
+            assert isinstance(main_tag, str), f"main tag must be str, not {type(main_tag)}"
+            assert isinstance(attribute_dict, dict), f"main tag must be dict, not {type(attribute_dict)}"
+            assert bool(attribute_dict) == True, "attribute dict must not be empty"
+            
+            text = soup.find("div", {"class": "itp_bodycontent detail_text"})
+            final_text = text.text
+            return final_text
 
         try:
             title = soup.find("h1").text
@@ -135,15 +154,12 @@ class DiscoveryUtil(object):
         except:
             final_text = " ".join(all_p_data)
         return final_text
-    def send_to_discovery(discovery, filename, environment_id, collection_id):
     
-        # Get file
-        fileinfo = self._open_file(filename)
-
-        # Send the data to the service
-        add_doc = self.discovery.add_document(environment_id, collection_id, file=fileinfo).get_result()
-
-        return add_doc
+    def _normalize_string(self, s):
+        s = re.sub(r"([.!?])", r" \1", s)
+        s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+        s = s.lower()
+        return s
 
     def send_news_discovery(self, url_list):
 
@@ -151,7 +167,17 @@ class DiscoveryUtil(object):
 
         print("Generating web data...")
         all_content_list = list(map(self._get_webpage_data, tqdm(url_list)))
-        content_list = [content for content in all_content_list if len(content.split()) > 300]
+        
+        for content_idx in range(len(all_content_list)):
+            if len(all_content_list[content_idx].split()) >= 150:
+                print("This link has MORE thatn 150 tokens")
+                print(url_list[content_idx], end="\n\n")
+
+            else:
+                print("This link has LESS thatn 150 tokens")
+                print(url_list[content_idx], end="\n\n")
+            
+        content_list = [content for content in all_content_list if len(content.split()) > 150]
         indeces = [all_content_list.index(content) for content in content_list]
 
 
@@ -164,6 +190,9 @@ class DiscoveryUtil(object):
                 content_translated.append(text)
             except:
                 continue
+                
+        print("Normalizing Text...")
+        content_translated = list(map(self._normalize_string, tqdm(content_translated)))
 
         print("Generating file names...")
         content_names = list(map(self._url_name_extension, tqdm(url_list)))
@@ -188,19 +217,18 @@ class DiscoveryUtil(object):
                 continue
         return content_names, url_list
     
-    def query(self, query):
-        query_result = self.discovery.query(self.environment_id, 
-                                        self.collection_id, 
-                                        query=query).get_result()
-        return query_result
-        
-    
     def get_result(self, urls, query):
 
         # TODO: Get url and file name based on result.
         content_names, url_list = self.send_news_discovery(urls)
         
-        
-        query_collections = self.query(query)
+        query_collections = self.discovery.query(self.environment_id, 
+                                        self.collection_id, 
+                                        query=query).get_result()
         return query_collections
+    def query(self, query):
+        query_result = self.discovery.query(self.environment_id, 
+                                        self.collection_id, 
+                                        query=query).get_result()
+        return query_result
    
